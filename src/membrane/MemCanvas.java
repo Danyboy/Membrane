@@ -24,7 +24,7 @@ import javax.swing.JTextField;
 public class MemCanvas extends Canvas implements MouseListener, MouseMotionListener{
     static int X, Y;
     static int newX = 640;
-    static int newY = 640;
+    static int newY = newX;
     static JTextField tf;
     static JButton jb;
     static JPanel j;
@@ -35,9 +35,9 @@ public class MemCanvas extends Canvas implements MouseListener, MouseMotionListe
 
     public MemCanvas(int x, int y, Membrane mm){
         X = x; Y = y; m = mm; pix = new int [X * Y];
-        alph();
+        showPressure();
         img = createImage(new MemoryImageSource(Y, X, pix, 0, X));
-        img = img.getScaledInstance(640, 640, 1);
+        img = img.getScaledInstance(newX, newY, 1);
         init();
     }
 //    
@@ -53,26 +53,67 @@ public class MemCanvas extends Canvas implements MouseListener, MouseMotionListe
         else return 255 - c;
     }
 
-    public static void alph(){
-        m.calculateFlowCofficient();
+    public static void showPressure(){
+//        m.calculateFlowCofficient();
+        m.calculate();
+//        m.calculateSpeed();
         int a = 0;
-        double[][] pn = m.getFlowCoefficient();
+//        double[][] pn = m.getFlowCoefficient();
+//        double[][] pn = m.getSummSpeed();
+//        double[][] pn = m.getDensity();
+        double[][] pn = m.getPressure();
         double max = max(pn);
         for (int i = 0; i < Y; i++) {
             for (int j = 0; j < X; j++) {
                 double ss = pn[j][i];
                 double ds =
 //                        intToColor(pn[j][i]);
-                        255 * pn[j][i]/ max;
+                        255 * Math.abs(pn[j][i]/ max);
 
                 int gr = ((int)ds) & 0xff;
                 pix[a++] = (255 << 24)|(gr << 8);
 
 //                Formatter f = new Formatter();
-//                f.format(" %.3f", ss);
+//                f.format(" %.3f", ds);
 //                System.out.print(f);
             }
 //            System.out.println("");
+        }
+    }
+
+    public static void myShowSpeed(){
+//        m.calculateFlowCofficient();
+        m.calculate();
+        int a = 0;
+//        double[][] pn = m.getFlowCoefficient();
+        double[][] pn = m.getSummSpeed();
+//        double[][] pn = m.getDensity();
+//        double[][] pn = m.getPressure();
+        double max = max(pn);
+        for (int i = 0; i < Y; i++) {
+            for (int j = 0; j < X; j++) {
+                double ds = 255 * pn[j][i]/max;
+                int gr = ((int)ds) & 0xff;
+                pix[a++] = (255 << 24)|(gr << 8);
+            }
+        }
+    }
+
+    public static void myShowDensity(){
+//        m.calculateFlowCofficient();
+        m.calculate();
+        int a = 0;
+//        double[][] pn = m.getFlowCoefficient();
+//        double[][] pn = m.getSummSpeed();
+        double[][] pn = m.getDensity();
+//        double[][] pn = m.getPressure();
+        double max = max(pn);
+        for (int i = 0; i < Y; i++) {
+            for (int j = 0; j < X; j++) {
+                double ds = 255 * pn[j][i]/max;
+                int gr = ((int)ds) & 0xff;
+                pix[a++] = (255 << 24)|(gr << 8);
+            }
         }
     }
 
@@ -80,8 +121,8 @@ public class MemCanvas extends Canvas implements MouseListener, MouseMotionListe
         double max = Double.MIN_VALUE;
         for (double[] doubles : arr) {
             for (double v : doubles) {
-                if (v > max) {
-                    max = v;
+                if (Math.abs(v) > max) {
+                    max = Math.abs(v);
                 }
             }
         }
@@ -101,10 +142,14 @@ public class MemCanvas extends Canvas implements MouseListener, MouseMotionListe
     
     public static void lines (Graphics g){
         g.setColor(Color.BLUE);
-        double l = newX/X;
+        double l = (double) newX / (double) X;
         for (Membrane.Tube t : m.getLines()) {
             g.drawLine((int) l * t.ax,(int)  l * t.ay,(int)  l * t.bx,(int)  l * t.by);
         }
+        Formatter f = new Formatter();
+        f.format(" %.3f", m.getFlow());
+
+        g.drawString("Flow " + f, newX - 140, newX - 10);
     //показать пересекшиеся
     //        g.setColor(Color.red);
     //        for (Tube t:m.intersect){
@@ -114,10 +159,11 @@ public class MemCanvas extends Canvas implements MouseListener, MouseMotionListe
     }
 
     public void mouseClicked(MouseEvent me) {
-        double l = X/newX;
-        m.addTube((int) l * me.getX(), (int) l * me.getY());
+        double l = (double) X / (double) newX;
+//        System.out.println("click X " + me.getX() + " Y " + me.getY() + " l " + l+ " l * X " + (int) l * me.getX());
+        m.addTube((int) (l * me.getX()), (int) (l * me.getY()));
+        MemJFrame.quantityField.setText("" + ++MemJFrame.quantity);
         MemJFrame.canvas = new MemCanvas(X, Y, m);
-//        MemJFrame.tf.setText("" + MemJFrame.quantity++);
         MemJFrame.mf.setVisible(false);
         MemJFrame.mf.setVisible(true);
     }

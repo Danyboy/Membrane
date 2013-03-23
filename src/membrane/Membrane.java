@@ -1,5 +1,8 @@
 package membrane;
 
+//import org.jetbrains.annotations.NotNull;
+//import org.jetbrains.annotations.Nullable;
+
 import java.util.LinkedList;
 
 public class Membrane {
@@ -8,15 +11,18 @@ public class Membrane {
     private final int X;
     private final int Y;
 
-    private LinkedList<Tube> lines;
+    public LinkedList<Tube> lines;
     private LinkedList<Tube> intersect;
 
     private double[][] myPressure; // pressure
     private double[][] myFlowCoefficient; //alpha
+    private double[][][] mySpeed;
+    private double[][] density;
 
-    private double p0; //start pressure P0
-    private int l; //length of tube
-    private int iteration;
+    private double initialDensity;
+    private double initialPressure; //start pressure P0
+    private int length; //length of tube
+    private double flow;
 
     //    public Membrane(int quantity){
 //        lines = new LinkedList();
@@ -24,11 +30,11 @@ public class Membrane {
 //        getRandomTubes(quantity);
 //    }
 //
-    public Membrane(int width, int height, int quantity, int length, double startPressure, int iter) {
+    public Membrane(int width, int height, int quantity, int length, double startPressure) {
         X = height;
         Y = width;
-        p0 = startPressure;
-        iteration = iter;
+        this.length = length;
+        initialPressure = startPressure;
         lines = new LinkedList<Tube>();
         intersect = new LinkedList<Tube>();
         myPressure = new double[X][Y];
@@ -39,11 +45,13 @@ public class Membrane {
         return myFlowCoefficient[i][j];
     }
 
-    private double calculateFlowCoefficient(double x, double y) {
+    private double calculateFlowCofficient(double x, double y) {
+        double water = 1;
         if (getLines().isEmpty()) {
             return 1;
         }
-        double min = X / 10; //радиус действия трубки TODO Исправить на переменную
+        double radius = length;
+        double min = radius; //радиус действия трубки TODO Исправить на переменную
 //        double min = 0;
         for (Tube tube : getLines()) {
             double current = distance(x, y, tube);
@@ -52,7 +60,7 @@ public class Membrane {
 //            return 5; //во сколько раз увеличить четение TODO Исправить на переменную
             }
         }
-        return min;
+        return 1 + water * (radius - min);
 //                1 + p0 * (1 - min/l);
     }
 
@@ -73,6 +81,95 @@ public class Membrane {
         return max;
     }
 
+
+    private void calculateSpeed() {
+        mySpeed = new double[X][Y][2];
+        double deltaX = 1;
+        for (int i = 1; i < X - 1; i++) {
+            for (int j = 1; j < Y - 1; j++) {
+                mySpeed[i][j][0] = -a(i, j) * (myPressure[i + 1][j] - myPressure[i - 1][j]) / deltaX; //[0] - X != 0
+                mySpeed[i][j][1] = -a(i, j) * (myPressure[i][j + 1] - myPressure[i][j - 1]) / deltaX; //[1] - Y == 0
+            }
+        }
+        // use myPressure and myFlowCoefficient
+    }
+
+    private void calculateDensity() {
+        // Use myPressure and mySpeed
+        initialDensity = 1;
+        setInitialDensity(initialDensity);
+
+        double diff = 0;
+        int iter = 0;
+        double EPS = 0.001;
+        do {
+            diff = nextDensityIteration();
+//            System.out.print(".");
+            if (iter % 1024 == 0) {
+//                System.out.println("diff = " + diff);
+            }
+            iter++;
+        } while (diff > EPS);
+
+    }
+
+    private double nextDensityIteration() {
+        double[][] newDensity = new double[X][Y];
+        double diff = 0;
+        double deltaTime = 0.1; //dT
+        double deltaX = 0.1; //dX
+        double deltaY = 0.1; //dX
+        for (int i = 1; i < X - 1; i++) {
+            for (int j = 1; j < Y - 1; j++) {
+                newDensity[i][j] =
+                        density[i][j]
+                                - deltaTime *
+                                (1 / 2 * (mySpeed[i][j][0] + Math.abs(mySpeed[i][j][0])) *
+                                        (myPressure[i][j] - myPressure[i - 1][j]) / deltaTime +
+                                        1 / 2 * (mySpeed[i][j][0] - Math.abs(mySpeed[i][j][0])) *
+                                                (myPressure[i + 1][j] - myPressure[i][j]) / deltaTime +
+                                        1 / 2 * (mySpeed[i][j][1] + Math.abs(mySpeed[i][j][0])) *
+                                                (myPressure[i][j] - myPressure[i][j - 1]) / deltaTime +
+                                        1 / 2 * (mySpeed[i][j][1] - Math.abs(mySpeed[i][j][0])) *
+                                                (myPressure[i][j + 1] - myPressure[i][j]) / deltaTime) +
+                                density[i][j] * (
+                                        mySpeed[i + 1][j][0] - mySpeed[i - 1][j][0] / (2 * deltaX) +
+                                                mySpeed[i][j + 1][0] - mySpeed[i][j - 1][0] / (2 * deltaY))
+                ;
+                diff += newDensity[i][j] - density[i][j];
+            }
+//            System.out.println("diff " + diff);
+        }
+        density = newDensity;
+        return diff;
+    }
+
+    private void setInitialDensity(double p) {
+        density = new double[X][Y];
+        for (int i = 0; i < X - 1; i++) {
+            for (int j = 0; j < Y - 1; j++) {
+                density[i][j] = p;
+            }
+        }
+    }
+
+    private void calculatePressure() {
+//        used flow cofficient
+        setInitialPressure();
+        double EPS = 0.1;
+        double diff;
+        int iter = 0;
+//        System.out.println("Starting pressure calculation");
+        do {
+            diff = nextPressureIteration();
+//            System.out.print(".");
+            if (iter % 1024 == 0) {
+//                System.out.println("diff = " + diff);
+            }
+            iter++;
+        } while (diff > EPS);
+//        System.out.println("Completed with " + iter + " iterations.");
+    }
 
     /**
      * @return difference between new iteration and previous pressure values, >= 0
@@ -99,7 +196,7 @@ public class Membrane {
                                 a(i + 1, j) * (myPressure[i + 1][j] - myPressure[i][j]) +
                                 a(i, j - 1) * (myPressure[i][j - 1] - myPressure[i][j]) +
                                 a(i, j + 1) * (myPressure[i][j + 1] - myPressure[i][j]))
-                        / (p0 * p0) + myPressure[i][j];
+                        / (initialPressure * initialPressure) + myPressure[i][j];
                 diff += Math.abs(newP[i][j] - myPressure[i][j]);
             }
         }
@@ -112,71 +209,87 @@ public class Membrane {
         return diff;
     }
 
-    public void calculate() {
-        // Alpha calculating
-        calculateFlowCofficient();
-
-        // Pressure calculating
-        calculatePressure();
-
-        // Speed calculating
-        calculateSpeed();
-
-        // Density calculation
-        calculateDensity();
-    }
-
-    private void calculateSpeed() {
-        // use myPressure and myFlowCoefficient
-    }
-
-    private void calculateDensity() {
-        // Use myPressure and mySpeed
-        for (int i = 0; i < 0; i++) {
-
-        }
-    }
-
-    private void calculatePressure() {
-        setPO();
-        double EPS = 0.1;
-        double diff;
-        int iter = 0;
-        System.out.println("Starting pressure calculation");
-        do {
-            diff = nextPressureIteration();
-//            System.out.print(".");
-            if (iter % 1024 == 0) {
-                System.out.println("diff = " + diff);
-            }
-            iter++;
-        } while (diff > EPS);
-        System.out.println("Completed with " + iter + " iterations.");
-    }
-
     public void calculateFlowCofficient() {
         myFlowCoefficient = new double[X][Y];
         for (int i = 0; i < X; i++) {
             for (int j = 0; j < Y; j++) {
-                myFlowCoefficient[i][j] = calculateFlowCoefficient(i, j);
+                myFlowCoefficient[i][j] = calculateFlowCofficient(i, j);
             }
         }
+    }
+
+    public void calculateFlow() {
+//        need pressure and speed
+        for (int j = 0; j < Y - 1; j++) {
+            flow += mySpeed[X - 2][j][0];
+        }
+//        System.out.println("Flow " + flow);
     }
 
     public double[][] getFlowCoefficient() {
         return myFlowCoefficient;
     }
 
+    public void calculate() {
+        // Alpha calculating
+        gotoState(State.CalculatedFlowCoefficient);
+//        calculateFlowCofficient();
+
+        // Pressure calculating
+        gotoState(State.CalculatedPressure);
+//        calculatePressure();
+
+        // Speed calculating
+        gotoState(State.CalculatedSpeed);
+//        calculateSpeed();
+
+        //Flow calculation (summ left-side element)
+        gotoState(State.CalculatedFlow);
+//        calculateFlow();
+
+        // Density calculation
+        gotoState(State.CalculatedDensity);
+//        calculateDensity();
+    }
+
+
+    public double getFlow() {
+        return flow;
+    }
+
     public double[][] getPressure() {
         return myPressure;
+    }
+
+    public double[][] getDensity() {
+        return density;
+    }
+
+    public double[][][] getSpeed() {
+        return mySpeed;
+    }
+
+    public double[][] getSummSpeed() {
+        double[][] summSpeed = new double[X][Y];
+        for (int i = 0; i < X - 1; i++) {
+            for (int j = 0; j < Y - 1; j++) {
+                summSpeed[i][j] =
+                        Math.sqrt(
+                                mySpeed[i][j][0]
+                                        * mySpeed[i][j][0] +
+                                        mySpeed[i][j][1] *
+                                                mySpeed[i][j][1]);
+            }
+        }
+        return summSpeed;
     }
 
     /**
      * Initial pressure matrix setup with some pressure on left side
      */
-    private void setPO() {
+    private void setInitialPressure() {
         for (int j = 0; j < myPressure.length; j++) {
-            myPressure[0][j] = p0;
+            myPressure[0][j] = initialPressure;
         }
     }
 
@@ -186,23 +299,21 @@ public class Membrane {
         }
     }
 
-    private void getRandomTube() {
-        getRandomTube(l);
+    public void getRandomTube() {
+        getRandomTube(length);
     }
 
     private void getRandomTube(int length) {
-        l = length; //длина линии
-
         final int maxIter = 100;
         Tube tube;
         for (int i = 0; i < maxIter; i++) {
-            tube = new Tube(getRandom(), getRandom(), l);
+            tube = new Tube(getRandom(), getRandom(), length);
             if (!isIntersect(tube, getLines()) && !isOutOfBoudaries(tube)) {
                 getLines().add(tube);
                 return;
             }
         }
-        System.out.println("Нет места для новых трубок");
+//        System.out.println("Нет места для новых трубок");
     }
 
 //пересечение отрезков
@@ -239,7 +350,7 @@ public class Membrane {
     }
 
     private boolean owned(int x1, int x2, double x) {
-        int ll = l / 10;
+        int ll = length / 10;
         if (x1 <= x2) {
             return (x1 - ll <= x && x <= x2 + ll);
         } else return (x1 + ll > x && x > x2 - ll);
@@ -256,6 +367,7 @@ public class Membrane {
     public LinkedList<Tube> getLines() {
         return lines;
     }
+
 
     public static class Tube {
         int ax, ay, bx, by;
@@ -307,12 +419,16 @@ public class Membrane {
 //    }
 
     public void addTube(int x, int y) {
-        Tube t = new Tube(x, y, l);
+        Tube t = new Tube(x, y, length);
         getLines().add(t);
     }
 
+    public void addTube() {
+        addTube(getRandom(), getRandom());
+    }
+
     private int getRandom() {
-        return (int) getRandom(l, X - l);
+        return (int) getRandom(length, X - length);
     }
 
     private static double getRandom(double min, double max) {
@@ -326,5 +442,81 @@ public class Membrane {
     private boolean out(int x, int y) {
         return ((x > X || x < 0) || (y > Y || y < 10));
     }
+    public enum State {
+        CalculatedNothing(null) {
+            @Override
+            public void process(Membrane membrane) {
+            }
+        },
+        CalculatedFlowCoefficient(CalculatedNothing) {
+            @Override
+            public void process(Membrane membrane) {
+                membrane.calculateFlowCofficient();
+            }
+        },
+        CalculatedPressure(CalculatedFlowCoefficient) {
+            @Override
+            public void process(Membrane membrane) {
+                membrane.calculatePressure();
+            }
+        },
+        CalculatedSpeed(CalculatedPressure) {
+            @Override
+            public void process(Membrane membrane) {
+                membrane.calculateSpeed();
+            }
+        },
+        CalculatedFlow(CalculatedSpeed) {
+            @Override
+            public void process(Membrane membrane) {
+                membrane.calculateFlow();
+            }
+        },
+        CalculatedDensity(CalculatedFlow) {
+            @Override
+            public void process(Membrane membrane) {
+//                membrane.calculateDensity();
+            }
+        },
+        Completed(CalculatedDensity) {
+            @Override
+            protected void process(Membrane membrane) {
+            }
+        };
+       private final State myPreviousState;
+
+        private State(State previous) {
+            myPreviousState = previous;
+        }
+
+        public State getPrevious() {
+            return myPreviousState;
+        }
+
+        protected abstract void process(final Membrane membrane);
+
+        public void process(final Membrane membrane, final State oldState) {
+            if (this == oldState) {
+                return;
+            }
+            if (myPreviousState != null) {
+                myPreviousState.process(membrane, oldState);
+            }
+
+            process(membrane);
+        }
+        }
+
+    private State myState = State.CalculatedNothing;
+
+    public State getState() {
+        return myState;
+    }
+
+    public void gotoState(final State newState) {
+        newState.process(this, myState);
+        myState = newState;
+    }
+
 }
 
