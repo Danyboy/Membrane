@@ -9,7 +9,7 @@
 <classPath>dist\Membrane.jar</classPath>
 <currentDirectory>${EXECUTABLEPATH}</currentDirectory>
 <embeddedJar>true</embeddedJar>
-<executableName>..\..\!Netscape\27 Teaching\!4 курс\Диплом\membrane.exe</executableName>
+<executableName>..\..\!Netscape\27 Teaching\!4 курс\Диплом\membrane3.exe</executableName>
 <initialMemoryHeap>-1</initialMemoryHeap>
 <jarLocation>dist\Membrane.jar</jarLocation>
 <mainClassName>membrane.MemJFrame</mainClassName>
