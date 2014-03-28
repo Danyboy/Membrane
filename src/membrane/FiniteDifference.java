@@ -10,7 +10,7 @@ import java.util.LinkedList;
 public class FiniteDifference {
 
 //    http://en.wikipedia.org/wiki/Finite_difference_method
-
+                                  // some change
     private final int X;
     private final int Y;
 
