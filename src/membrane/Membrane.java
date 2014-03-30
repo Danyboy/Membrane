@@ -275,10 +275,8 @@ public class Membrane {
             for (int j = 0; j < Y - 1; j++) {
                 summSpeed[i][j] =
                         Math.sqrt(
-                                mySpeed[i][j][0]
-                                        * mySpeed[i][j][0] +
-                                        mySpeed[i][j][1] *
-                                                mySpeed[i][j][1]);
+                                mySpeed[i][j][0] * mySpeed[i][j][0] +
+                                mySpeed[i][j][1] * mySpeed[i][j][1]);
             }
         }
         return summSpeed;

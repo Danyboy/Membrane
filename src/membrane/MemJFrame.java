@@ -81,6 +81,9 @@ public class MemJFrame extends JFrame {
             initialPressure = Integer.parseInt(args[1]);
             length = Integer.parseInt(args[2]);
         }
+
+        FiniteDifference finiteDifference = new FiniteDifference(40, 40);
+        finiteDifference.calculate();
         
 //        int av = 15;
 //        double mediumPrevius = 0;
@@ -89,10 +92,16 @@ public class MemJFrame extends JFrame {
 //            double deltaFlow = 0;
 //            for (int j = 0; j < av; j++) {
 //            mf.m.addTube();
-            mf = new MemJFrame();
-            mf.m = new Membrane(X, Y, quantity, length, initialPressure);
+
+
+//            mf = new MemJFrame();
+//            mf.m = new Membrane(X, Y, quantity, length, initialPressure);
+
+
 //            mf.m.calculate();
-            mf.myJFrame();
+
+//            mf.myJFrame();
+
 //            mediumNext += mf.m.getFlow();
 //            }
 //            mediumNext /= av;
