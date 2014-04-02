@@ -12,9 +12,8 @@ public class FiniteDifference {
     private final int X;
     private final int Y;
 
-    private double[][] thermal;
-    private double[][] heat;
-    private double[][] heatCofficient;
+    private double[][] thermal; //распределение тепла со временем
+    private double[][] heatCofficient; //распределение тепла от источника, постоянное
     double radius = 2;
 
     public LinkedList<HeatSource> heatSources;
@@ -32,7 +31,6 @@ public class FiniteDifference {
         X = x;
         Y = y;
         thermal = new double[X][Y];
-        heat = new double[X][Y];
         heatCofficient = new double[X][Y];
         initialHeat = 1;
         initialHeatSource = 1;
@@ -48,6 +46,7 @@ public class FiniteDifference {
             nextThermalIteration();
         }
         //TODO copy border elements from privious step thermal array
+        setWaterHeat(0,0); //how many heat go to water
     }
 
     private void addHeatSource(int x, int y){
@@ -94,7 +93,7 @@ public class FiniteDifference {
                                 + delta *
                                 (thermal[i + 1][j] + thermal[i - 1][j] +
                                  thermal[i][j + 1] + thermal[i][j - 1] -
-                             4 * thermal[i][j]     + heat[i][j])
+                             4 * thermal[i][j])
                                 + heatCofficient[i][j]
                 ;
                 diff += newThermal[i][j] - thermal[i][j];
@@ -103,6 +102,16 @@ public class FiniteDifference {
         }
         thermal = newThermal;
         return diff;
+    }
+
+    void setWaterHeat(int x, int y){
+        int sizeWater = 10; //TODO change to var
+        double heatWater[][] = new double[sizeWater][sizeWater];
+        for (int i = x; i < x + sizeWater; i++) {
+            for (int j = y; j < y + sizeWater ; j++) {
+                heatWater[i][j] = thermal[i][j];
+            }
+        }
     }
 
     private int getRandom() {
