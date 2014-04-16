@@ -1,6 +1,7 @@
 package membrane;
 
 import java.util.LinkedList;
+import java.util.logging.Logger;
 
 /**
  * Created by Dany on 08.03.14.
@@ -12,7 +13,13 @@ public class FiniteDifference {
     private final int X;
     private final int Y;
 
-    private double[][] thermal; //распределение тепла со временем
+    private Logger log = Logger.getLogger(FiniteDifference.class.getName());
+
+    public double[][] getHeat() {
+        return heat;
+    }
+
+    private double[][] heat; //распределение тепла со временем
     private double[][] heatCofficient; //распределение тепла от источника, постоянное
     double radius = 2;
 
@@ -21,16 +28,10 @@ public class FiniteDifference {
     private double initialHeat; //start heat
     private double initialHeatSource; //start heat source, temperature
 
-    public FiniteDifference() {
-        super();
-        X = 40;
-        Y = X;
-    }
-
     public FiniteDifference(int x, int y) {
         X = x;
         Y = y;
-        thermal = new double[X][Y];
+        heat = new double[X][Y];
         heatCofficient = new double[X][Y];
         initialHeat = 1;
         initialHeatSource = 1;
@@ -38,15 +39,37 @@ public class FiniteDifference {
     }
 
     void calculate(){
-        addHeatSource(getRandom(), getRandom());
+//        addHeatSource(getRandom(), getRandom());
+        addHeatSource(1, 1);
         calculateHeatCofficient();
-        for (int i = 0; i < 20; i++) {
+        setInitialHeat();
+
+        for (int i = 0; i < 80; i++) {
             System.out.println();
             System.out.println("New iteration " + i);
             nextThermalIteration();
         }
-        //TODO copy border elements from privious step thermal array
+
         setWaterHeat(0,0); //how many heat go to water
+    }
+
+    private void copyBorder(double[][] oldArray, double[][] newArray) {
+        for (int i = 0; i < X - 1; i++) {
+            newArray[i][0] = oldArray[i][1];
+            newArray[i][Y - 1] = oldArray[i][Y - 2];
+        }
+        for (int j = 0; j < Y - 1; j++) {
+            newArray[0][j] = oldArray[1][j];
+            newArray[X - 1][j] = oldArray[X - 2][j];
+        }
+    }
+
+    private void setInitialHeat() {
+        for (int i = 0; i < X; i++) {
+            for (int j = 0; j < Y; j++) {
+                heat[i][j] = initialHeat;
+            }
+        }
     }
 
     private void addHeatSource(int x, int y){
@@ -57,7 +80,7 @@ public class FiniteDifference {
         for (int i = 0; i < X; i++) {
             for (int j = 0; j < Y; j++) {
                 heatCofficient[i][j] = calculateHeatCofficient(i, j);
-                System.out.println("heatCofficient[i][j] " + heatCofficient[i][j]);
+                myLog("heatCofficient[i][j] " + heatCofficient[i][j]);
             }
         }
     }
@@ -74,42 +97,59 @@ public class FiniteDifference {
                 min = current;
             }
         }
-        return 1 + (radius - min);
+        return (radius - min);
+//        return 1 + (radius - min);
 //                1 + p0 * (1 - min/l);
     }
 
     private double nextThermalIteration() {
-        double[][] newThermal = new double[X][Y];
+        double[][] newHeat = new double[X][Y];
         double diff = 0;
-        double deltaTime = 0.1; //dT
+        double deltaTime = 0.01; //dT
         double deltaX = 0.1; //dX
         double deltaY = 0.1; //dX
         double alpha = 0.1;  // \ / (c * r) - lambd / heat * density
         double delta = deltaTime * alpha / ( deltaX * deltaX);
-        for (int i = 1; i < X - 1; i++) {
-            for (int j = 1; j < Y - 1; j++) {
-                newThermal[i][j] =
-                        thermal[i][j]
+        for (int i = 1; i < X - 2; i++) {
+            for (int j = 1; j < Y - 2; j++) {
+                newHeat[i][j] =
+                        heat[i][j]
                                 + delta *
-                                (thermal[i + 1][j] + thermal[i - 1][j] +
-                                 thermal[i][j + 1] + thermal[i][j - 1] -
-                             4 * thermal[i][j])
+                                (heat[i + 1][j] + heat[i - 1][j] +
+                                 heat[i][j + 1] + heat[i][j - 1]
+                                - 4 * heat[i][j])
                                 + heatCofficient[i][j]
                 ;
-                diff += newThermal[i][j] - thermal[i][j];
+                diff += newHeat[i][j] - heat[i][j];
             }
-            System.out.println("diff " + diff);
+            myLog("diff " + diff);
         }
-        thermal = newThermal;
+
+        copyBorder(heat, newHeat);
+
+        heat = newHeat;
         return diff;
     }
 
+    public void myLog(String s){
+        boolean logOn = true;
+        if (logOn){
+            System.out.println(s);
+        }
+
+        boolean systemLog = false;
+        if(systemLog){
+            log.info(s);
+        }
+
+    }
+
     void setWaterHeat(int x, int y){
-        int sizeWater = 10; //TODO change to var
+        int sizeWater = 2; //TODO change to var
         double heatWater[][] = new double[sizeWater][sizeWater];
         for (int i = x; i < x + sizeWater; i++) {
             for (int j = y; j < y + sizeWater ; j++) {
-                heatWater[i][j] = thermal[i][j];
+                heatWater[i][j] = heat[i][j];
             }
         }
     }

@@ -57,7 +57,6 @@ public class MemJFrame extends JFrame {
         myBottonJPanel.setComponentPopupMenu(stateSelectorJMenu);
         
 
-
         start.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent ae) {
                 quantity = Integer.parseInt(quantityField.getText());
@@ -82,9 +81,10 @@ public class MemJFrame extends JFrame {
             length = Integer.parseInt(args[2]);
         }
 
-        FiniteDifference finiteDifference = new FiniteDifference(40, 40);
+        FiniteDifference finiteDifference = new FiniteDifference(5, 5);
         finiteDifference.calculate();
-        
+        ArrayViewImpl arrayView = new ArrayViewImpl(finiteDifference.getHeat());
+
 //        int av = 15;
 //        double mediumPrevius = 0;
 //        for (int quantity = 0; quantity < 110; quantity += 5) {
